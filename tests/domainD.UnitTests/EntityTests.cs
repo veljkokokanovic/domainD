@@ -17,7 +17,7 @@ namespace domainD.UnitTests
             e1.IsDone.Should().BeFalse();
             e1.Name.Should().Be("test one");
             e1.Count.Should().Be(1);
-            e1.Subscribe(e => e.Version.Should().Be(AggregateRoot.UnInitializedVersion + 1));
+            e1.As<IAggregateRoot>().Subscribe(e => e.Version.Should().Be(AggregateRoot.UnInitializedVersion + 1));
         }
 
         [Fact]
@@ -32,7 +32,7 @@ namespace domainD.UnitTests
             e1.Count.Should().Be(2);
             e1.Property.Name.Should().Be("property name");
             var eventVersionCounter = 0;
-            e1.Subscribe(e => e.Version.Should().Be(eventVersionCounter++));
+            e1.As<IAggregateRoot>().Subscribe(e => e.Version.Should().Be(eventVersionCounter++));
             eventVersionCounter.Should().Be(3);
         }
 
@@ -57,10 +57,10 @@ namespace domainD.UnitTests
             e2.Property.Name.Should().Be("name");
 
             var eventVersionCounter = 0;
-            e1.Subscribe(e => e.Version.Should().Be(eventVersionCounter++));
+            e1.As<IAggregateRoot>().Subscribe(e => e.Version.Should().Be(eventVersionCounter++));
             eventVersionCounter.Should().Be(2);
             eventVersionCounter = 0;
-            e2.Subscribe(e => e.Version.Should().Be(eventVersionCounter++));
+            e1.As<IAggregateRoot>().Subscribe(e => e.Version.Should().Be(eventVersionCounter++));
             eventVersionCounter.Should().Be(2);
         }
 
@@ -89,7 +89,7 @@ namespace domainD.UnitTests
             aggregateRoot.Count.Should().Be(3);
             aggregateRoot.Property.Name.Should().Be("name");
             var eventVersionCounter = 0;
-            aggregateRoot.Subscribe(e =>eventVersionCounter++);
+            aggregateRoot.As<IAggregateRoot>().Subscribe(e =>eventVersionCounter++);
             // we can subscribe only to events that have been created though actions on aggregate
             // here were rebuilding state based on events that have been already processed
             eventVersionCounter.Should().Be(0);

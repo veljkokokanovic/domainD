@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Fasterflect;
+using System;
 using System.Globalization;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reflection;
-using Fasterflect;
 
 namespace domainD
 {
@@ -13,7 +12,7 @@ namespace domainD
         public const int UnInitializedVersion = -1;
 
         public static TAggregateRoot Create<TAggregateRoot>(DomainEvent @event, Guid id = default)
-            where TAggregateRoot : AggregateRoot
+            where TAggregateRoot : Entity<Guid>, IAggregateRoot
         {
             var aggregateRoot = CreateImpl<TAggregateRoot>(id);
 
@@ -27,7 +26,7 @@ namespace domainD
         }
 
         public static TAggregateRoot CreateFromHistory<TAggregateRoot>(DomainEvent[] events)
-            where TAggregateRoot : AggregateRoot
+            where TAggregateRoot : Entity<Guid>, IAggregateRoot
         {
             if (events == null)
             {
@@ -43,14 +42,14 @@ namespace domainD
 
             foreach (var evt in events)
             {
-                aggregateRoot.InvokeEventHandler(evt);
+                aggregateRoot.Handle(evt);
             }
 
             return aggregateRoot;
         }
 
         private static TAggregateRoot CreateImpl<TAggregateRoot>(Guid id = default)
-            where TAggregateRoot : AggregateRoot
+            where TAggregateRoot : Entity<Guid>, IAggregateRoot
         {
             try
             {
@@ -84,7 +83,7 @@ namespace domainD
 
         public long Version { get; private set; } = UnInitializedVersion;
 
-        public void Subscribe(Action<DomainEvent> action)
+        void IAggregateRoot.Subscribe(Action<DomainEvent> action)
         {
             var replay = Subject.Value.Replay();
             replay.Where(e => e.AggregateRootId == Identity).Subscribe(action);
@@ -97,11 +96,11 @@ namespace domainD
                 .Subscribe(@event =>
                 {
                     @event.Version = Version + 1;
-                    InvokeEventHandler(@event);
+                    ((IAggregateRoot)this).Handle(@event);
                 });
         }
 
-        private void InvokeEventHandler(DomainEvent @event)
+        void IAggregateRoot.Handle(DomainEvent @event)
         {
             if (@event.Version != Version + 1)
             {

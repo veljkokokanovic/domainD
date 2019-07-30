@@ -6,6 +6,8 @@ namespace domainD
     {
         void Subscribe(Action<DomainEvent> action);
 
+        void Handle(DomainEvent @event);
+
         long Version { get; }
     }
 }

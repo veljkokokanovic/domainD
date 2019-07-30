@@ -21,7 +21,7 @@ namespace domainD
             Subject.Value = Subject.Value ?? new ReplaySubject<DomainEvent>();
         }
 
-        protected virtual void RaiseEvent(DomainEvent @event)
+        protected internal virtual void RaiseEvent(DomainEvent @event)
         {
             if (@event == null)
             {
