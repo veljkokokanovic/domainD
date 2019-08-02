@@ -6,9 +6,9 @@ namespace domainD
 {
     public abstract class Entity
     {
-        protected static readonly AsyncLocal<ReplaySubject<DomainEvent>> Subject = new AsyncLocal<ReplaySubject<DomainEvent>>();
+        protected static readonly AsyncLocal<ReplaySubject<ObservedDomainEvent>> Subject = new AsyncLocal<ReplaySubject<ObservedDomainEvent>>();
 
-        private readonly Guid _aggregateRootId; 
+        private readonly Guid _aggregateRootId;
 
         protected Entity(Guid aggregateRootId)
         {
@@ -18,7 +18,7 @@ namespace domainD
             }
 
             _aggregateRootId = aggregateRootId;
-            Subject.Value = Subject.Value ?? new ReplaySubject<DomainEvent>();
+            Subject.Value = Subject.Value ?? new ReplaySubject<ObservedDomainEvent>();
         }
 
         protected internal virtual void RaiseEvent(DomainEvent @event)
@@ -29,7 +29,7 @@ namespace domainD
             }
 
             @event.AggregateRootId = _aggregateRootId;
-            Subject.Value.OnNext(@event);
+            Subject.Value.OnNext(new ObservedDomainEvent { DomainEvent = @event });
         }
     }
 }

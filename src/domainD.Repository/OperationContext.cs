@@ -1,24 +1,54 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Threading;
 
 namespace domainD.Repository
 {
     public static class OperationContext
     {
-        private static readonly AsyncLocal<Guid?> _correlationId = new AsyncLocal<Guid?>();
+        public static class Keys
+        {
+            public const string CorrelationId = nameof(CorrelationId);
 
-        private static readonly AsyncLocal<Guid?> _commandId = new AsyncLocal<Guid?>();
+            public const string CommandId = nameof(CommandId);
+        }
+
+        private static readonly AsyncLocal<ConcurrentDictionary<string,object>> ContextMap = new AsyncLocal<ConcurrentDictionary<string, object>>();
+
+        static OperationContext()
+        {
+            ContextMap.Value = new ConcurrentDictionary<string, object>();
+        }
+
+        public static bool TryGetValue<T>(string key, out T value)
+        {
+            value = default;
+
+            if (ContextMap.Value.TryGetValue(key, out var rawValue))
+            {
+                value = (T) rawValue;
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool TryAddValue<T>(string key, T value)
+        {
+            return ContextMap.Value.TryAdd(key, value);
+        }
+
 
         public static Guid? CorrelationId
         {
-            get => _correlationId.Value;
-            set => _correlationId.Value = value;
+            get => TryGetValue<Guid?>(Keys.CorrelationId, out var correlationId) ? correlationId : default;
+            set => TryAddValue(Keys.CorrelationId, value);
         }
 
         public static Guid? CommandId
         {
-            get => _commandId.Value;
-            set => _commandId.Value = value;
+            get => TryGetValue<Guid?>(Keys.CommandId, out var commandId) ? commandId : default;
+            set => TryAddValue(Keys.CommandId, value);
         }
     }
 }

@@ -8,12 +8,15 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.0.1" />
+    <PackageReference Include="NEventStore.Persistence.Sql" Version="7.2.0" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.6.1" />
     <PackageReference Include="xunit" Version="2.4.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\domainD.Repository.NEventStore\domainD.Repository.NEventStore.csproj" />
+    <ProjectReference Include="..\domainD.UnitTests\domainD.UnitTests.csproj" />
   </ItemGroup>
 
 </Project>

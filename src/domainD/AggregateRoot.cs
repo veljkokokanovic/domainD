@@ -1,5 +1,7 @@
 ﻿using Fasterflect;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Reactive.Linq;
@@ -10,16 +12,20 @@ namespace domainD
     public abstract class AggregateRoot : Entity<Guid>, IAggregateRoot
     {
         public const int UnInitializedVersion = -1;
+        private readonly Guid _instanceId = Guid.NewGuid();
 
         public static TAggregateRoot Create<TAggregateRoot>(DomainEvent @event, Guid id = default)
             where TAggregateRoot : Entity<Guid>, IAggregateRoot
         {
-            var aggregateRoot = CreateImpl<TAggregateRoot>(id);
-
             if (@event.Version != UnInitializedVersion + 1)
             {
                 throw new EventVersionMismatchException("Invalid version of creation event. Expected {Version + 1}, but was {@event.Version}", @event.Version, UnInitializedVersion + 1);
             }
+
+            typeof(TAggregateRoot).FieldsAndProperties()
+
+            var aggregateRoot = CreateImpl<TAggregateRoot>(id);
+            aggregateRoot.ConnectEventHandlers();
 
             aggregateRoot.RaiseEvent(@event);
             return aggregateRoot;
@@ -78,7 +84,7 @@ namespace domainD
 
         protected AggregateRoot(Guid id) : base(id, id)
         {
-            ConnectEventHandlers();
+            
         }
 
         public long Version { get; private set; } = UnInitializedVersion;
@@ -86,17 +92,19 @@ namespace domainD
         void IAggregateRoot.Subscribe(Action<DomainEvent> action)
         {
             var replay = Subject.Value.Replay();
-            replay.Where(e => e.AggregateRootId == Identity).Subscribe(action);
+            replay.Where(e => e.AggregateRootInstance == _instanceId).Subscribe(e => action(e.DomainEvent));
             replay.Connect().Dispose();
         }
 
-        private void ConnectEventHandlers()
+        void IAggregateRoot.ConnectEventHandlers()
         {
-            Subject.Value.Where(e => e.AggregateRootId == Identity)
+            Subject.Value.Where(e => e.DomainEvent.AggregateRootId == Identity && !e.Handled)
                 .Subscribe(@event =>
                 {
-                    @event.Version = Version + 1;
-                    ((IAggregateRoot)this).Handle(@event);
+                    @event.DomainEvent.Version = Version + 1;
+                    ((IAggregateRoot)this).Handle(@event.DomainEvent);
+                   // @event.Handled = true;
+                    @event.AggregateRootInstance = _instanceId;
                 });
         }
 
@@ -104,7 +112,7 @@ namespace domainD
         {
             if (@event.Version != Version + 1)
             {
-                throw new EventVersionMismatchException($"Invalid event version during handler execution. Expected {Version + 1}, but was {@event.Version}", @event.Version, Version);
+                throw new EventVersionMismatchException($"Invalid event version during handler execution. Expected {Version + 1}, but was {@event.Version}", @event.Version, Version + 1);
             }
 
             if (@event.AggregateRootId != Identity)
@@ -114,6 +122,33 @@ namespace domainD
 
             this.CallMethod("Handle", @event);
             Version = @event.Version;
+        }
+
+        private IEnumerable<Entity> GetEntities(object o)
+        {
+            foreach(var member in o.GetType().FieldsAndProperties(Flags.InstanceAnyVisibility))
+            {
+                if(typeof(IEnumerable).IsAssignableFrom(member.Type()))
+                {
+                    if (o.TryGetValue(member.Name, Flags.InstanceAnyVisibility) is IEnumerable enumerable)
+                    {
+                        foreach (var instance in enumerable)
+                        {
+                            if(instance != null)
+                            {
+                                foreach(var obj in GetEntities(instance))
+                                {
+                                    yield return obj;
+                                }
+                            }
+                        }
+                    }
+                }
+                else if(typeof(Entity).IsAssignableFrom(member.Type()))
+                {
+                    yield return o.TryGetValue(member.Name, Flags.InstanceAnyVisibility) as Entity;
+                }
+            }
         }
     }
 }

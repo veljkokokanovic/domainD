@@ -16,10 +16,15 @@ namespace domainD.Repository.NEventStore
                 .LogToOutputWindow(LogLevel.Debug)
                 .UseOptimisticPipelineHook();
 
-            wireup.UsingInMemoryPersistence().InitializeStorageEngine().UsingJsonSerialization();
-            options?.DynamicInvoke(wireup);
+            wireup
+                .UsingInMemoryPersistence()
+                .UsingJsonSerialization();
 
-            services.AddSingleton(wireup.Build());
+            options?.Invoke(wireup);
+            var es = wireup.Build();
+            es.Advanced.Initialize();
+
+            services.AddSingleton(es);
 
             services.AddTransient(typeof(IRepository<>), typeof(NEventStoreRepository<>));
             return services;

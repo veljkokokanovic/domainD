@@ -8,6 +8,8 @@ namespace domainD
 
         void Handle(DomainEvent @event);
 
+        void ConnectEventHandlers();
+
         long Version { get; }
     }
 }

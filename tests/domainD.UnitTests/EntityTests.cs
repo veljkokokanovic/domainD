@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using domainD.UnitTests.Entities;
-using Fasterflect;
 using FluentAssertions;
 using Xunit;
 
@@ -77,8 +76,8 @@ namespace domainD.UnitTests
             long versionCounter = 0;
             history.ForEach(e =>
             {
-                e.SetPropertyValue("AggregateRootId", aggregateRootId);
-                e.SetPropertyValue("Version", versionCounter++);
+                e.AggregateRootId = aggregateRootId;
+                e.Version = versionCounter++;
             });
 
             var aggregateRoot = AggregateRoot.CreateFromHistory<TestEntity>(history.ToArray());
