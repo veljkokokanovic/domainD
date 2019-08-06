@@ -6,12 +6,12 @@ namespace domainD.UnitTests.Entities
     {
         protected TestEntity(Guid id) : base(id)
         {
-            Property = new ComplexProperty(id.ToString(), id);
+            Property = new ComplexProperty(id.ToString());
         }
 
-        public void Done()
+        public void Done(bool raiseError = false)
         {
-            RaiseEvent(new TestDone());
+            RaiseEvent(new TestDone(raiseError));
         }
 
         public void NonHandle()
@@ -60,7 +60,12 @@ namespace domainD.UnitTests.Entities
 
     public class TestDone : DomainEvent
     {
+        public TestDone(bool raiseError = false)
+        {
+            RaiseError = raiseError;
+        }
 
+        public bool RaiseError { get; private set; }
     }
 
     public class NonHandled : DomainEvent

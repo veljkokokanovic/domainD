@@ -1,25 +1,10 @@
 ﻿using System;
-using System.Reactive.Subjects;
-using System.Threading;
 
 namespace domainD
 {
     public abstract class Entity
     {
-        protected static readonly AsyncLocal<ReplaySubject<ObservedDomainEvent>> Subject = new AsyncLocal<ReplaySubject<ObservedDomainEvent>>();
-
-        private readonly Guid _aggregateRootId;
-
-        protected Entity(Guid aggregateRootId)
-        {
-            if (aggregateRootId == default)
-            {
-                throw new ArgumentException("Aggregate root Id must not be empty guid.", nameof(aggregateRootId));
-            }
-
-            _aggregateRootId = aggregateRootId;
-            Subject.Value = Subject.Value ?? new ReplaySubject<ObservedDomainEvent>();
-        }
+        internal IEventDispatcher EventDispatcher { get; set; }
 
         protected internal virtual void RaiseEvent(DomainEvent @event)
         {
@@ -28,8 +13,12 @@ namespace domainD
                 throw new ArgumentNullException(nameof(@event));
             }
 
-            @event.AggregateRootId = _aggregateRootId;
-            Subject.Value.OnNext(new ObservedDomainEvent { DomainEvent = @event });
+            if (EventDispatcher == null)
+            {
+                throw new InvalidOperationException($"Event dispatcher on {GetType()} is not set.");
+            }
+
+            EventDispatcher.DispatchEvent(@event);
         }
     }
 }

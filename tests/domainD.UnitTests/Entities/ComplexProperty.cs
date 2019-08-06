@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace domainD.UnitTests.Entities
+﻿namespace domainD.UnitTests.Entities
 {
     public class ComplexProperty : Entity<string>
     {
-        public ComplexProperty(string id, Guid aggregateRootId) : base(id, aggregateRootId)
+        public ComplexProperty(string id) : base(id)
         {
         }
 

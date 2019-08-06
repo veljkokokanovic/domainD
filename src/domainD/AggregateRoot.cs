@@ -4,15 +4,21 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace domainD
 {
     public abstract class AggregateRoot : Entity<Guid>, IAggregateRoot
     {
         public const int UnInitializedVersion = -1;
-        private readonly Guid _instanceId = Guid.NewGuid();
+
+        private ReplaySubject<DomainEvent> _subject = new ReplaySubject<DomainEvent>();
 
         public static TAggregateRoot Create<TAggregateRoot>(DomainEvent @event, Guid id = default)
             where TAggregateRoot : Entity<Guid>, IAggregateRoot
@@ -22,11 +28,7 @@ namespace domainD
                 throw new EventVersionMismatchException("Invalid version of creation event. Expected {Version + 1}, but was {@event.Version}", @event.Version, UnInitializedVersion + 1);
             }
 
-            typeof(TAggregateRoot).FieldsAndProperties()
-
             var aggregateRoot = CreateImpl<TAggregateRoot>(id);
-            aggregateRoot.ConnectEventHandlers();
-
             aggregateRoot.RaiseEvent(@event);
             return aggregateRoot;
         }
@@ -82,29 +84,47 @@ namespace domainD
             }
         }
 
-        protected AggregateRoot(Guid id) : base(id, id)
+        protected AggregateRoot(Guid id) : base(id)
         {
-            
+            EventDispatcher = this;
+            ConnectEventHandlers();
         }
 
         public long Version { get; private set; } = UnInitializedVersion;
 
         void IAggregateRoot.Subscribe(Action<DomainEvent> action)
         {
-            var replay = Subject.Value.Replay();
-            replay.Where(e => e.AggregateRootInstance == _instanceId).Subscribe(e => action(e.DomainEvent));
+            var replay = _subject.Replay();
+            replay.Subscribe(action);
             replay.Connect().Dispose();
         }
 
-        void IAggregateRoot.ConnectEventHandlers()
+        void IAggregateRoot.Subscribe(Func<DomainEvent,Task> action, CancellationToken cancellationToken = default)
         {
-            Subject.Value.Where(e => e.DomainEvent.AggregateRootId == Identity && !e.Handled)
+             var replay = _subject.Replay();
+            replay
+                .Select(e => Observable.FromAsync(async () => await action(e)))
+                .Concat()
+                .ObserveOn(Scheduler.CurrentThread)
+                .Subscribe(cancellationToken);
+            replay.Connect().Dispose();
+        }
+
+        void IAggregateRoot.ClearEvents()
+        {
+            _subject.Dispose();
+            _subject = new ReplaySubject<DomainEvent>();
+            ConnectEventHandlers();
+        }
+
+        private void ConnectEventHandlers()
+        {
+            _subject
                 .Subscribe(@event =>
                 {
-                    @event.DomainEvent.Version = Version + 1;
-                    ((IAggregateRoot)this).Handle(@event.DomainEvent);
-                   // @event.Handled = true;
-                    @event.AggregateRootInstance = _instanceId;
+                    @event.Version = Version + 1;
+                    @event.AggregateRootId = Identity;
+                    ((IAggregateRoot)this).Handle(@event);
                 });
         }
 
@@ -120,23 +140,51 @@ namespace domainD
                 throw new InvalidOperationException($"Event aggregate root Id mismatch. Expected {Identity}, but was {@event.AggregateRootId}");
             }
 
-            this.CallMethod("Handle", @event);
+            try
+            {
+                this.CallMethod("Handle", @event);
+            }
+            catch (TargetInvocationException tex) when (tex.InnerException != null)
+            {
+                ExceptionDispatchInfo.Capture(tex.InnerException).Throw();
+                throw;
+            }
+
             Version = @event.Version;
+            SetEventDispatcher(this);
         }
 
-        private IEnumerable<Entity> GetEntities(object o)
+        void IEventDispatcher.DispatchEvent(DomainEvent @event)
         {
-            foreach(var member in o.GetType().FieldsAndProperties(Flags.InstanceAnyVisibility))
+            if (@event == null)
             {
-                if(typeof(IEnumerable).IsAssignableFrom(member.Type()))
+                throw new ArgumentNullException(nameof(@event));
+            }
+
+            _subject.OnNext(@event);
+        }
+
+        private void SetEventDispatcher(IEventDispatcher dispatcher)
+        {
+            foreach (var entity in GetEntities(this))
+            {
+                entity.EventDispatcher = dispatcher;
+            }
+        }
+
+        private static IEnumerable<Entity> GetEntities(object o)
+        {
+            foreach (var member in o.GetType().FieldsAndProperties(Flags.InstanceAnyVisibility))
+            {
+                if (typeof(IEnumerable).IsAssignableFrom(member.Type()))
                 {
                     if (o.TryGetValue(member.Name, Flags.InstanceAnyVisibility) is IEnumerable enumerable)
                     {
                         foreach (var instance in enumerable)
                         {
-                            if(instance != null)
+                            if (instance != null)
                             {
-                                foreach(var obj in GetEntities(instance))
+                                foreach (var obj in GetEntities(instance))
                                 {
                                     yield return obj;
                                 }
@@ -144,7 +192,7 @@ namespace domainD
                         }
                     }
                 }
-                else if(typeof(Entity).IsAssignableFrom(member.Type()))
+                else if (typeof(Entity).IsAssignableFrom(member.Type()))
                 {
                     yield return o.TryGetValue(member.Name, Flags.InstanceAnyVisibility) as Entity;
                 }

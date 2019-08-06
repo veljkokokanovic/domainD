@@ -5,8 +5,7 @@ namespace domainD
     public abstract class Entity<TId> : Entity, IEquatable<Entity<TId>>
         where TId : IEquatable<TId>
     {
-
-        protected Entity(TId id, Guid aggregateRootId) : base(aggregateRootId)
+        protected Entity(TId id)
         {
             if (Equals(id, default(TId)))
             {

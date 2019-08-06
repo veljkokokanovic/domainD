@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
-using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 
 namespace domainD.Repository
@@ -27,7 +27,14 @@ namespace domainD.Repository
             {
                 foreach (var handler in GetEventHandlers(e))
                 {
-                    await GetHandlerRunner(handler, e).ConfigureAwait(false);
+                    try
+                    {
+                        await GetHandlerRunner(handler, e).ConfigureAwait(false);
+                    }
+                    catch (TargetInvocationException tex) when (tex.InnerException != null)
+                    {
+                        ExceptionDispatchInfo.Capture(tex.InnerException).Throw();
+                    }
                 }
                 uncommittedEvents.Add(e);
             });

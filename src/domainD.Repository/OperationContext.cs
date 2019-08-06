@@ -13,16 +13,13 @@ namespace domainD.Repository
             public const string CommandId = nameof(CommandId);
         }
 
-        private static readonly AsyncLocal<ConcurrentDictionary<string,object>> ContextMap = new AsyncLocal<ConcurrentDictionary<string, object>>();
-
-        static OperationContext()
-        {
-            ContextMap.Value = new ConcurrentDictionary<string, object>();
-        }
+        private static readonly AsyncLocal<ConcurrentDictionary<string, object>> ContextMap = new AsyncLocal<ConcurrentDictionary<string, object>>();
 
         public static bool TryGetValue<T>(string key, out T value)
         {
             value = default;
+
+            ContextMap.Value = ContextMap.Value ?? new ConcurrentDictionary<string, object>();
 
             if (ContextMap.Value.TryGetValue(key, out var rawValue))
             {
@@ -35,6 +32,7 @@ namespace domainD.Repository
 
         public static bool TryAddValue<T>(string key, T value)
         {
+            ContextMap.Value = ContextMap.Value ?? new ConcurrentDictionary<string, object>();
             return ContextMap.Value.TryAdd(key, value);
         }
 

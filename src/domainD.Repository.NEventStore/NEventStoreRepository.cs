@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NEventStore;
 
 namespace domainD.Repository.NEventStore
@@ -10,10 +12,12 @@ namespace domainD.Repository.NEventStore
         where TAggregateRoot : Entity<Guid>, IAggregateRoot
     {
         private readonly IStoreEvents _eventStore;
+        private readonly ILogger _logger;
 
-        public NEventStoreRepository(IStoreEvents eventStore, IServiceProvider serviceProvider) : base(serviceProvider)
+        public NEventStoreRepository(IStoreEvents eventStore, IServiceProvider serviceProvider, ILogger logger = null) : base(serviceProvider)
         {
             _eventStore = eventStore;
+            _logger = logger ?? NullLogger.Instance;
         }
 
         public override Task SaveAsync(TAggregateRoot aggregateRoot)
@@ -23,12 +27,14 @@ namespace domainD.Repository.NEventStore
                 throw new ArgumentNullException(nameof(aggregateRoot));
             }
 
-            var uncommittedEvents = DispatchEvents(aggregateRoot);
+            var uncommittedEvents = DispatchEvents(aggregateRoot).ToArray();
 
             if (uncommittedEvents.Any())
             {
-                using (var stream = _eventStore.CreateStream(typeof(TAggregateRoot).FullName, aggregateRoot.Identity))
+                using (var stream = _eventStore.OpenStream(typeof(TAggregateRoot).Name, aggregateRoot.Identity,(int)uncommittedEvents.First().Version))
                 {
+                    var commitId = OperationContext.CommandId ?? Guid.NewGuid();
+
                     foreach (var @event in uncommittedEvents)
                     {
                         stream.Add(new EventMessage
@@ -38,12 +44,34 @@ namespace domainD.Repository.NEventStore
                             {
                                 { KnownHeaders.EventClrType, @event.GetType().AssemblyQualifiedName },
                                 { KnownHeaders.AggregateRootClrType, typeof(TAggregateRoot).AssemblyQualifiedName },
-                                { KnownHeaders.CorrelationId, OperationContext.CorrelationId ?? Guid.NewGuid() }
+                                { KnownHeaders.CorrelationId, commitId }
                             }
                         });
                     }
 
-                    stream.CommitChanges(OperationContext.CommandId ?? Guid.NewGuid());
+                    try
+                    {
+                        stream.CommitChanges(commitId);
+                    }
+                    catch (DuplicateCommitException dce)
+                    {
+                        stream.ClearChanges();
+                        _logger.LogWarning($"Duplicate commit {commitId} detected, skipping...", dce);
+                    }
+                    catch (global::NEventStore.ConcurrencyException cex)
+                    {
+                        stream.ClearChanges();
+                        throw new ConcurrencyException(cex.Message, cex);
+                    }
+                    catch
+                    {
+                        stream.ClearChanges();
+                        throw;
+                    }
+                    finally
+                    {
+                        aggregateRoot.ClearEvents();
+                    }
                 }
             }
 
@@ -57,10 +85,14 @@ namespace domainD.Repository.NEventStore
                 throw new ArgumentNullException(nameof(aggregateRootId));
             }
 
-            using (var stream = _eventStore.OpenStream(typeof(TAggregateRoot).FullName, aggregateRootId, 0))
+            using (var stream = _eventStore.OpenStream(typeof(TAggregateRoot).Name, aggregateRootId, 0))
             {
-                var events = stream.CommittedEvents.Select(ce => ce.Body).Cast<DomainEvent>();
-                var aggregateRoot = AggregateRoot.CreateFromHistory<TAggregateRoot>(events.ToArray());
+                var events = stream.CommittedEvents.Select(ce => ce.Body).Cast<DomainEvent>().ToArray();
+                if(!events.Any())
+                {
+                    return Task.FromResult<TAggregateRoot>(null);
+                }
+                var aggregateRoot = AggregateRoot.CreateFromHistory<TAggregateRoot>(events);
                 return Task.FromResult(aggregateRoot);
             }
         }
