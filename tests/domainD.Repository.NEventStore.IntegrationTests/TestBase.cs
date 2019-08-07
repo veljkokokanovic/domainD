@@ -19,7 +19,7 @@ namespace domainD.Repository.NEventStore.IntegrationTests
         private readonly TransactionScope _transaction;
         protected readonly ServiceCollection ServiceCollection;
 
-        protected TestBase()
+        protected TestBase(bool requireTransaction = true)
         {
             ServiceCollection = new ServiceCollection();
             _transaction = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
@@ -31,11 +31,18 @@ namespace domainD.Repository.NEventStore.IntegrationTests
                 Password = "sql_express"
             };
             ServiceCollection.AddNEventStore(wireup =>
-                wireup.UsingSqlPersistence(new NetStandardConnectionFactory(SqlClientFactory.Instance, connectionString.ConnectionString))
-                    .EnlistInAmbientTransaction()
+            {
+                var persistenceWireup = wireup.UsingSqlPersistence(new NetStandardConnectionFactory(SqlClientFactory.Instance,
+                        connectionString.ConnectionString));
+                if (requireTransaction)
+                {
+                    persistenceWireup.EnlistInAmbientTransaction();
+                }
+
+                persistenceWireup
                     .WithDialect(new MsSqlDialect())
-                    .UsingJsonSerialization()
-            );
+                    .UsingJsonSerialization();
+            });
         }
 
         protected ServiceProvider Services => _serviceProvider = _serviceProvider ?? ServiceCollection.BuildServiceProvider();

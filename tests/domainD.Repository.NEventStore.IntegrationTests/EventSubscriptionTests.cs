@@ -16,7 +16,7 @@ namespace domainD.Repository.NEventStore.IntegrationTests
         private int _eventCounter;
         private readonly EventWaitHandle _waitHandle;
 
-        public EventSubscriptionTests()
+        public EventSubscriptionTests() : base(false)
         {
             _waitHandle = new AutoResetEvent(false);
             var subscriptionBuilder = new EventSubscriptionBuilder().As<IEventSubscriptionBuilder>();
@@ -34,7 +34,7 @@ namespace domainD.Repository.NEventStore.IntegrationTests
                     _waitHandle.Set();
                     return Task.CompletedTask;
                 })
-                .OnError(e => { throw e; });
+                .RetryOnError((e, ex) => false);
 
             ServiceCollection
                 .AddSingleton<IEventSubscription, NEventStoreEventSubscription>()

@@ -13,9 +13,9 @@ namespace domainD.EventSubscription
             return new EventHandler<TEvent>(this);
         }
 
-        IEventSubscriptionBuilder IEventSubscriptionBuilder.OnError(Action<Exception> errorHandler)
+        IEventSubscriptionBuilder IEventSubscriptionBuilder.RetryOnError(Func<DomainEvent, Exception, bool> retryResolver)
         {
-            _handlers[typeof(Exception)] = errorHandler;
+            _handlers[typeof(Exception)] = retryResolver;
             return this;
         }
 

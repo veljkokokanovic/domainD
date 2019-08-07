@@ -10,7 +10,7 @@ namespace domainD.EventSubscription
     {
         IEventHandler<TEvent> On<TEvent>() where TEvent : DomainEvent;
 
-        IEventSubscriptionBuilder OnError(Action<Exception> errorHandler);
+        IEventSubscriptionBuilder RetryOnError(Func<DomainEvent, Exception, bool> retryResolver);
     }
 
     internal interface IHandlerResolver
