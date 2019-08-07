@@ -1,42 +1,15 @@
 using domainD.UnitTests.Entities;
 using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
-using NEventStore;
-using NEventStore.Persistence.Sql;
-using NEventStore.Persistence.Sql.SqlDialects;
-using NEventStore.Serialization.Json;
 using System;
-using System.Data.SqlClient;
 using System.Threading.Tasks;
 using Xunit;
 
 namespace domainD.Repository.NEventStore.IntegrationTests
 {
-    public class RepositoryTests : IDisposable
+    public class RepositoryTests : TestBase
     {
-        private readonly ServiceProvider _serviceProvider;
-        private IRepository<TestEntity> _repository;
-
         public RepositoryTests()
         {
-            var connectionString = new SqlConnectionStringBuilder
-            {
-                DataSource = @".",
-                InitialCatalog = "EventStore",
-                UserID = "sa",
-                Password = "sql_express"
-            };
-            var serviceCollection = new ServiceCollection();
-            serviceCollection.AddNEventStore(wireup =>
-
-                wireup.UsingSqlPersistence(
-                        new NetStandardConnectionFactory(SqlClientFactory.Instance, connectionString.ConnectionString))
-                    .WithDialect(new MsSqlDialect())
-                    .UsingJsonSerialization()
-            );
-
-            _serviceProvider = serviceCollection.BuildServiceProvider();
-            _repository = (IRepository<TestEntity>) _serviceProvider.GetService(typeof(IRepository<TestEntity>));
         }
 
         [Fact]
@@ -45,8 +18,8 @@ namespace domainD.Repository.NEventStore.IntegrationTests
             var id = Guid.NewGuid();
             var e1 = AggregateRoot.Create<TestEntity>(new TestCreated("test two", 2), id);
             e1.Done();
-            await _repository.SaveAsync(e1);
-            var ent = await _repository.GetAsync(id);
+            await Repository.SaveAsync(e1);
+            var ent = await Repository.GetAsync(id);
             e1.Should().BeEquivalentTo(ent);
             ent.Version.Should().Be(1);
         }
@@ -57,10 +30,10 @@ namespace domainD.Repository.NEventStore.IntegrationTests
             var id = Guid.NewGuid();
             var e1 = AggregateRoot.Create<TestEntity>(new TestCreated("test two", 2), id);
             e1.Done();
-            await _repository.SaveAsync(e1);
-            Action anotherSave = () => _repository.SaveAsync(e1).GetAwaiter().GetResult();
+            await Repository.SaveAsync(e1);
+            Action anotherSave = () => Repository.SaveAsync(e1).GetAwaiter().GetResult();
             anotherSave.Should().NotThrow();
-            Action get = () => _repository.GetAsync(id).GetAwaiter().GetResult();
+            Action get = () => Repository.GetAsync(id).GetAwaiter().GetResult();
             get.Should().NotThrow();
         }
 
@@ -71,16 +44,18 @@ namespace domainD.Repository.NEventStore.IntegrationTests
             var e1 = AggregateRoot.Create<TestEntity>(new TestCreated("test two", 2), id);
             e1.Done();
             OperationContext.CommandId = Guid.NewGuid();
-            await _repository.SaveAsync(e1);
-            await _repository.SaveAsync(e1);
-            await _repository.GetAsync(id);
+            await Repository.SaveAsync(e1);
+            Action anotherSave = () => Repository.SaveAsync(e1).GetAwaiter().GetResult();
+            anotherSave.Should().NotThrow();
+            Action get = () => Repository.GetAsync(id).GetAwaiter().GetResult();
+            get.Should().NotThrow();
         }
 
         [Fact]
         public async Task Getting_non_existing_aggregate_returns_null()
         {
             var id = Guid.NewGuid();
-            var aggregateRoot = await _repository.GetAsync(id);
+            var aggregateRoot = await Repository.GetAsync(id);
             aggregateRoot.Should().BeNull();
         }
 
@@ -90,10 +65,10 @@ namespace domainD.Repository.NEventStore.IntegrationTests
             var id = Guid.NewGuid();
             var e1 = AggregateRoot.Create<TestEntity>(new TestCreated("test two", 2), id);
             e1.Done();
-            await _repository.SaveAsync(e1);
-            var e2 = await _repository.GetAsync(id);
+            await Repository.SaveAsync(e1);
+            var e2 = await Repository.GetAsync(id);
             e2.Property.SetName("1");
-            await _repository.SaveAsync(e2);
+            await Repository.SaveAsync(e2);
             e2.Property.Name.Should().Be("1");
             e1.Version.Should().Be(1);
             e2.Version.Should().Be(2);
@@ -105,16 +80,11 @@ namespace domainD.Repository.NEventStore.IntegrationTests
             var id = Guid.NewGuid();
             var e1 = AggregateRoot.Create<TestEntity>(new TestCreated("test two", 2), id);
             e1.Done();
-            await _repository.SaveAsync(e1);
+            await Repository.SaveAsync(e1);
             e1.Property.SetName("1");
-            await _repository.SaveAsync(e1);
+            await Repository.SaveAsync(e1);
             e1.Property.Name.Should().Be("1");
             e1.Version.Should().Be(2);
-        }
-
-        public void Dispose()
-        {
-            _serviceProvider?.Dispose();
         }
     }
 }

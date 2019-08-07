@@ -150,6 +150,7 @@ namespace domainD
                 throw;
             }
 
+           
             Version = @event.Version;
             SetEventDispatcher(this);
         }
