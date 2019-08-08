@@ -11,6 +11,10 @@ namespace domainD.EventSubscription
         IEventHandler<TEvent> On<TEvent>() where TEvent : DomainEvent;
 
         IEventSubscriptionBuilder RetryOnError(Func<DomainEvent, Exception, bool> retryResolver);
+
+        IEventSubscriptionBuilder UseFileCheckpointLoader(string fileName = null);
+
+        IEventSubscriptionBuilder UseCheckpointLoader<TLoader>() where TLoader : ICheckpointLoader;
     }
 
     internal interface IHandlerResolver

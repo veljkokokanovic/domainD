@@ -8,6 +8,15 @@ namespace domainD.EventSubscription
     {
         private readonly Dictionary<Type, Delegate> _handlers = new Dictionary<Type, Delegate>();
 
+        public EventSubscriptionBuilder()
+        {
+            CheckpointLoader = new NullCheckpointLoader();
+        }
+
+        public ICheckpointLoader CheckpointLoader { get; private set; }
+
+        public Type CheckpointLoaderType { get; private set; }
+
         IEventHandler<TEvent> IEventSubscriptionBuilder.On<TEvent>()
         {
             return new EventHandler<TEvent>(this);
@@ -16,6 +25,20 @@ namespace domainD.EventSubscription
         IEventSubscriptionBuilder IEventSubscriptionBuilder.RetryOnError(Func<DomainEvent, Exception, bool> retryResolver)
         {
             _handlers[typeof(Exception)] = retryResolver;
+            return this;
+        }
+
+        IEventSubscriptionBuilder IEventSubscriptionBuilder.UseFileCheckpointLoader(string fileName)
+        {
+            CheckpointLoader = new FileCheckpointLoader(fileName);
+            CheckpointLoaderType = null;
+            return this;
+        }
+
+        IEventSubscriptionBuilder IEventSubscriptionBuilder.UseCheckpointLoader<TLoader>()
+        {
+            CheckpointLoaderType = typeof(TLoader);
+            CheckpointLoader = null;
             return this;
         }
 

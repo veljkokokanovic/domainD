@@ -17,28 +17,32 @@ namespace domainD.EventSubscription.NEventStore
         private IStoreEvents _eventStore;
         private PollingClient2 _pollingClient;
         private readonly ILogger _logger;
+        private readonly ICheckpointLoader _checkpointLoader;
+        private long _currentCheckpoint;
 
-        public NEventStoreEventSubscription(IServiceProvider serviceProvider, ILogger logger = null)
+        public NEventStoreEventSubscription(IServiceProvider serviceProvider, ICheckpointLoader checkpointLoader, ILogger logger = null)
         {
             _serviceProvider = serviceProvider;
             _logger = logger ?? NullLogger.Instance;
+            _checkpointLoader = checkpointLoader;
         }
 
-        public Task StartAsync(CancellationToken cancellationToken = default)
+        public async Task StartAsync(CancellationToken cancellationToken = default)
         {
+            _currentCheckpoint = await _checkpointLoader.LoadAsync<long>().ConfigureAwait(false);
             _eventStore = _serviceProvider.GetRequiredService<IStoreEvents>();
-            _pollingClient = new PollingClient2(_eventStore.Advanced,
+            _pollingClient = new PollingClient2(
+                _eventStore.Advanced,
                 c => cancellationToken.IsCancellationRequested ? PollingClient2.HandlingResult.Stop : CommitHandler(c));
-            _pollingClient.StartFrom();
-            return Task.CompletedTask;
+            _pollingClient.StartFrom(_currentCheckpoint);
         }
 
-        public Task StopAsync(CancellationToken cancellationToken = default)
+        public async Task StopAsync(CancellationToken cancellationToken = default)
         {
+            await _checkpointLoader.SaveAsync(_currentCheckpoint).ConfigureAwait(false);
             _pollingClient?.Stop();
             _pollingClient?.Dispose();
             _eventStore?.Advanced.Dispose();
-            return Task.CompletedTask;
         }
 
         private PollingClient2.HandlingResult CommitHandler(ICommit commit)
@@ -76,21 +80,22 @@ namespace domainD.EventSubscription.NEventStore
                     }
                 }
 
+                _currentCheckpoint = commit.CheckpointToken;
                 return PollingClient2.HandlingResult.MoveToNext;
             }
         }
 
         private PollingClient2.HandlingResult ErrorHandler(DomainEvent evt, Exception ex)
         {
-            _logger.LogCritical(ex, "Error during handling {EventType}.", evt.GetType());
             var builder = _serviceProvider.GetRequiredService<IHandlerResolver>();
-            if (builder.TryGetErrorHandler(out var handler))
+            if (builder.TryGetErrorHandler(out var handler) && (bool)handler.DynamicInvoke(evt, ex))
             {
-                var result = (bool)handler.DynamicInvoke(evt, ex);
-                return result ? PollingClient2.HandlingResult.Retry : PollingClient2.HandlingResult.Stop;
+                _logger.LogError(ex, "Error during handling {EventType}. Will retry.", evt.GetType());
+                return PollingClient2.HandlingResult.Retry;
             }
 
-            _logger.LogWarning("Error handler resolver was not registered");
+            _logger.LogCritical(ex, "Error during handling {EventType}. Exit polling.", evt.GetType());
+            _checkpointLoader.SaveAsync(_currentCheckpoint).GetAwaiter().GetResult();
             return PollingClient2.HandlingResult.Stop;
         }
     }

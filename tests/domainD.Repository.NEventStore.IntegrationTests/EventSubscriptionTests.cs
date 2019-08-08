@@ -19,8 +19,8 @@ namespace domainD.Repository.NEventStore.IntegrationTests
         public EventSubscriptionTests() : base(false)
         {
             _waitHandle = new AutoResetEvent(false);
-            var subscriptionBuilder = new EventSubscriptionBuilder().As<IEventSubscriptionBuilder>();
-            subscriptionBuilder
+            var subscriptionBuilder = new EventSubscriptionBuilder();
+            subscriptionBuilder.As<IEventSubscriptionBuilder>()
                 .On<TestCreated>()
                 .HandleAsync(e =>
                 {
@@ -40,7 +40,8 @@ namespace domainD.Repository.NEventStore.IntegrationTests
                 .AddSingleton<IEventSubscription, NEventStoreEventSubscription>()
                 .AddSingleton<NEventStoreEventSubscription>()
                 .AddSingleton(typeof(IEventSubscriptionBuilder), subscriptionBuilder)
-                .AddSingleton(typeof(IHandlerResolver), subscriptionBuilder);
+                .AddSingleton(typeof(IHandlerResolver), subscriptionBuilder)
+                .AddSingleton(subscriptionBuilder.CheckpointLoader);
 
             _eventSubscription = Services.GetRequiredService<IEventSubscription>();
             _eventSubscription.StartAsync().GetAwaiter().GetResult();

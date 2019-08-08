@@ -6,9 +6,10 @@ namespace domainD.EventSubscription
 {
     public static class HostingExtensions
     {
-        public static HostBuilder AddEventSubscription<TSubscription>(this HostBuilder builder,
-            Action<IEventSubscriptionBuilder> subscriptionConfigurator = null)
-         where TSubscription : class, IEventSubscription
+        public static HostBuilder AddEventSubscription<TSubscription>(
+            this HostBuilder builder, 
+            Action<IEventSubscriptionBuilder> subscriptionConfigurator = null) 
+            where TSubscription : class, IEventSubscription
         {
             var subscriptionBuilder = new EventSubscriptionBuilder();
             subscriptionConfigurator?.Invoke(subscriptionBuilder);
@@ -20,6 +21,15 @@ namespace domainD.EventSubscription
                     .AddHostedService<EventSubscriptionHostingService<TSubscription>>()
                     .AddSingleton(typeof(IEventSubscriptionBuilder), subscriptionBuilder)
                     .AddSingleton(typeof(IHandlerResolver), subscriptionBuilder);
+
+                if (subscriptionBuilder.CheckpointLoaderType != null)
+                {
+                    services.AddScoped(typeof(ICheckpointLoader), subscriptionBuilder.CheckpointLoaderType);
+                }
+                else
+                {
+                    services.AddSingleton(subscriptionBuilder.CheckpointLoader);
+                }
             });
             
 
