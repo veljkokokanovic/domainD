@@ -8,9 +8,11 @@ namespace domainD.Repository
     {
         public static class Keys
         {
-            public const string CorrelationId = nameof(CorrelationId);
+            public const string CorrelationIdKey = nameof(CorrelationId);
 
-            public const string CommandId = nameof(CommandId);
+            public const string CommandIdKey = nameof(CommandId);
+
+            public const string UserIdKey = nameof(UserId);
         }
 
         private static readonly AsyncLocal<ConcurrentDictionary<string, object>> ContextMap = new AsyncLocal<ConcurrentDictionary<string, object>>();
@@ -39,14 +41,20 @@ namespace domainD.Repository
 
         public static Guid? CorrelationId
         {
-            get => TryGetValue<Guid?>(Keys.CorrelationId, out var correlationId) ? correlationId : default;
-            set => TryAddValue(Keys.CorrelationId, value);
+            get => TryGetValue<Guid?>(Keys.CorrelationIdKey, out var correlationId) ? correlationId : default;
+            set => TryAddValue(Keys.CorrelationIdKey, value);
         }
 
         public static Guid? CommandId
         {
-            get => TryGetValue<Guid?>(Keys.CommandId, out var commandId) ? commandId : default;
-            set => TryAddValue(Keys.CommandId, value);
+            get => TryGetValue<Guid?>(Keys.CommandIdKey, out var commandId) ? commandId : default;
+            set => TryAddValue(Keys.CommandIdKey, value);
+        }
+
+        public static Guid? UserId
+        {
+            get => TryGetValue<Guid?>(Keys.UserIdKey, out var commandId) ? commandId : default;
+            set => TryAddValue(Keys.UserIdKey, value);
         }
     }
 }

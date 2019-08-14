@@ -37,6 +37,11 @@ namespace domainD.Repository.NEventStore
 
                     foreach (var @event in uncommittedEvents)
                     {
+                        if (OperationContext.TryGetValue("UserId", out Guid userId))
+                        {
+                            @event.CreatedBy = userId;
+                        }
+
                         stream.Add(new EventMessage
                         {
                             Body = @event,

@@ -10,6 +10,8 @@ namespace domainD
 
         public DateTime CreatedOn { get; set; } = DateTime.UtcNow;
 
+        public Guid CreatedBy { get; set; }
+
         public bool IsInitialEvent()
         {
             return Version == AggregateRoot.UnInitializedVersion + 1;

@@ -65,7 +65,7 @@ namespace domainD.EventSubscription.NEventStore
                         try
                         {
                             var handlerTask =
-                                (Task) handler.DynamicInvoke(new[] {evt}.Concat(resolvableParameters).ToArray());
+                                (Task)handler.DynamicInvoke(new[] { evt }.Concat(resolvableParameters).ToArray());
                             handlerTask.GetAwaiter().GetResult();
                         }
                         catch (Exception ex)
