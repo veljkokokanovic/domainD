@@ -6,8 +6,8 @@ namespace domainD.EventSubscription
 {
     public static class HostingExtensions
     {
-        public static HostBuilder AddEventSubscription<TSubscription>(
-            this HostBuilder builder, 
+        public static IHostBuilder AddEventSubscription<TSubscription>(
+            this IHostBuilder builder, 
             Action<IEventSubscriptionBuilder> subscriptionConfigurator = null) 
             where TSubscription : class, IEventSubscription
         {

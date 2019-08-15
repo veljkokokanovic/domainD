@@ -1,6 +1,7 @@
 ﻿using Fasterflect;
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -52,6 +53,8 @@ namespace domainD
             {
                 aggregateRoot.Handle(evt);
             }
+
+            SetEventDispatcher(aggregateRoot, aggregateRoot);
 
             return aggregateRoot;
         }
@@ -152,7 +155,7 @@ namespace domainD
 
            
             Version = @event.Version;
-            SetEventDispatcher(this);
+            SetEventDispatcher(this, this);
         }
 
         void IEventDispatcher.DispatchEvent(DomainEvent @event)
@@ -165,37 +168,48 @@ namespace domainD
             _subject.OnNext(@event);
         }
 
-        private void SetEventDispatcher(IEventDispatcher dispatcher)
+        private static void SetEventDispatcher(IAggregateRoot instance, IEventDispatcher dispatcher)
         {
-            foreach (var entity in GetEntities(this))
+            foreach (var entity in GetEntities(instance))
             {
                 entity.EventDispatcher = dispatcher;
             }
         }
 
-        private static IEnumerable<Entity> GetEntities(object o)
+        private static IEnumerable<Entity> GetEntities(IAggregateRoot o)
         {
-            foreach (var member in o.GetType().FieldsAndProperties(Flags.InstanceAnyVisibility))
+            IEnumerable<object> Deconstruct(object obj)
             {
-                if (typeof(IEnumerable).IsAssignableFrom(member.Type()))
+                var props = obj.GetType()
+                    .Fields(Flags.InstanceAnyVisibility)
+                    .Where(fp => typeof(Entity).IsAssignableFrom(fp.Type()) || typeof(IEnumerable).IsAssignableFrom(fp.Type()) && typeof(string) != fp.Type());
+                var instances =  props.Select(p => o.TryGetValue(p.Name, Flags.InstanceAnyVisibility))
+                    .Where(i => i != null);
+                return instances;
+            }
+
+            var queue = new ConcurrentQueue<object>(Deconstruct(o));
+
+            while (queue.TryDequeue(out var obj))
+            {
+                if (obj is IEnumerable enumerable)
                 {
-                    if (o.TryGetValue(member.Name, Flags.InstanceAnyVisibility) is IEnumerable enumerable)
+                    foreach (var item in enumerable)
                     {
-                        foreach (var instance in enumerable)
-                        {
-                            if (instance != null)
-                            {
-                                foreach (var obj in GetEntities(instance))
-                                {
-                                    yield return obj;
-                                }
-                            }
-                        }
+                        queue.Enqueue(item);
                     }
                 }
-                else if (typeof(Entity).IsAssignableFrom(member.Type()))
+                else
                 {
-                    yield return o.TryGetValue(member.Name, Flags.InstanceAnyVisibility) as Entity;
+                    if (obj is Entity entity)
+                    {
+                        yield return entity;
+                    }
+
+                    foreach (var d in Deconstruct(obj))
+                    {
+                        queue.Enqueue(d);
+                    }
                 }
             }
         }
