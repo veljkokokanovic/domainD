@@ -28,7 +28,7 @@ namespace domainD.Repository.NEventStore.IntegrationTests
                 DataSource = @".",
                 InitialCatalog = "EventStore",
                 UserID = "sa",
-                Password = "sql_express"
+                Password = "Passw0rd"
             };
             ServiceCollection.AddNEventStore(wireup =>
             {
