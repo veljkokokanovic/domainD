@@ -37,9 +37,9 @@ namespace domainD.Repository.NEventStore
 
                     foreach (var @event in uncommittedEvents)
                     {
-                        if (OperationContext.TryGetValue("UserId", out Guid userId))
+                        if (OperationContext.UserId.HasValue)
                         {
-                            @event.CreatedBy = userId;
+                            @event.CreatedBy = OperationContext.UserId.Value;
                         }
 
                         stream.Add(new EventMessage
