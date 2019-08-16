@@ -20,10 +20,10 @@ namespace domainD.EventSubscription.NEventStore
         private readonly ICheckpointLoader _checkpointLoader;
         private long _currentCheckpoint;
 
-        public NEventStoreEventSubscription(IServiceProvider serviceProvider, ICheckpointLoader checkpointLoader, ILogger logger = null)
+        public NEventStoreEventSubscription(IServiceProvider serviceProvider, ICheckpointLoader checkpointLoader, ILogger<NEventStoreEventSubscription> logger = null)
         {
             _serviceProvider = serviceProvider;
-            _logger = logger ?? NullLogger.Instance;
+            _logger = logger ?? NullLogger<NEventStoreEventSubscription>.Instance;
             _checkpointLoader = checkpointLoader;
         }
 
@@ -35,6 +35,7 @@ namespace domainD.EventSubscription.NEventStore
                 _eventStore.Advanced,
                 c => cancellationToken.IsCancellationRequested ? PollingClient2.HandlingResult.Stop : CommitHandler(c));
             _pollingClient.StartFrom(_currentCheckpoint);
+            _logger.LogInformation($"Starting event subscription from checkpoint {_currentCheckpoint}");
         }
 
         public async Task StopAsync(CancellationToken cancellationToken = default)

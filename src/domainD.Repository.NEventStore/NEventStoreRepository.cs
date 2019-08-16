@@ -31,7 +31,7 @@ namespace domainD.Repository.NEventStore
 
             if (uncommittedEvents.Any())
             {
-                using (var stream = _eventStore.OpenStream(typeof(TAggregateRoot).Name, aggregateRoot.Identity,(int)uncommittedEvents.First().Version))
+                using (var stream = _eventStore.OpenStream(typeof(TAggregateRoot).FullName, aggregateRoot.Identity,(int)uncommittedEvents.First().Version))
                 {
                     var commitId = OperationContext.CommandId ?? Guid.NewGuid();
 
@@ -90,7 +90,7 @@ namespace domainD.Repository.NEventStore
                 throw new ArgumentNullException(nameof(aggregateRootId));
             }
 
-            using (var stream = _eventStore.OpenStream(typeof(TAggregateRoot).Name, aggregateRootId, 0))
+            using (var stream = _eventStore.OpenStream(typeof(TAggregateRoot).FullName, aggregateRootId, 0))
             {
                 var events = stream.CommittedEvents.Select(ce => ce.Body).Cast<DomainEvent>().ToArray();
                 if(!events.Any())

@@ -6,6 +6,7 @@
     <AssemblyName>domainD.Repository</AssemblyName>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>git://github.com/veljkokokanovic/domainD</RepositoryUrl>
+    <LangVersion>7.1</LangVersion>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net461' ">
