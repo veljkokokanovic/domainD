@@ -41,6 +41,7 @@ namespace domainD.EventSubscription.NEventStore
         public async Task StopAsync(CancellationToken cancellationToken = default)
         {
             await _checkpointLoader.SaveAsync(_currentCheckpoint).ConfigureAwait(false);
+            _logger.LogInformation($"Stopping event subscription at checkpoint {_currentCheckpoint}");
             _pollingClient?.Stop();
             _pollingClient?.Dispose();
             _eventStore?.Advanced.Dispose();
