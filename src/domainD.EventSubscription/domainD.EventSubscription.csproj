@@ -1,13 +1,21 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>domainD event subscription</Description>
-    <Copyright>Copyright Veljko Kokanovic</Copyright>
-    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+    <Description>Defines abstractions for consumer driven event subscription</Description>
+    <Copyright>Copyright @2019 Veljko Kokanovic</Copyright>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <AssemblyName>domainD.EventSubscription</AssemblyName>
+    <PackageId>domainD.EventSubscription</PackageId>
+    <PackageTags>ddd;cqrs;domain;event;subscription</PackageTags>
+    <PackageIconUrl>https://github.com/veljkokokanovic/domainD/blob/master/assets/logo/icon_128_128.png?raw=true</PackageIconUrl>
+    <PackageProjectUrl>https://github.com/veljkokokanovic/domainD</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/veljkokokanovic/domainD/blob/master/LICENSE</PackageLicenseUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>git://github.com/veljkokokanovic/domainD</RepositoryUrl>
     <LangVersion>7.1</LangVersion>
+    <Version>0.1.0</Version>
+    <Authors>Veljko Kokanovic</Authors>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
   <ItemGroup>

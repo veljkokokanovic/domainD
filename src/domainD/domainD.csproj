@@ -1,24 +1,27 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Description>Library for building domain models based on DDD paradigm</Description>
-    <Copyright>Copyright Veljko Kokanovic</Copyright>
-    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+    <Description>Library for building domain models based on DDD</Description>
+    <Copyright>Copyright @2019 Veljko Kokanovic</Copyright>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <AssemblyName>domainD</AssemblyName>
     <PackageId>domainD</PackageId>
     <PackageTags>ddd;cqrs;domain;</PackageTags>
-    <!--<PackageIconUrl>https://raw.githubusercontent.com/veljkokokanovic/domainD/master/assets/logo/gradient_128x128.png</PackageIconUrl>-->
+    <PackageIconUrl>https://github.com/veljkokokanovic/domainD/blob/master/assets/logo/icon_128_128.png?raw=true</PackageIconUrl>
     <PackageProjectUrl>https://github.com/veljkokokanovic/domainD</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/veljkokokanovic/domainD/blob/master/LICENSE</PackageLicenseUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>git://github.com/veljkokokanovic/domainD</RepositoryUrl>
     <LangVersion>7.1</LangVersion>
+    <Version>0.1.0</Version>
+    <Authors>Veljko Kokanovic</Authors>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
   </PropertyGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net461' ">
+  <!--<ItemGroup Condition=" '$(TargetFramework)' == 'net461' ">
     <Reference Include="System" />
     <Reference Include="Microsoft.CSharp" />
-  </ItemGroup>
+  </ItemGroup>-->
 
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0-beta2-19367-01">
