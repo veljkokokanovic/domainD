@@ -65,11 +65,7 @@ namespace domainD.EventSubscription.NEventStore
 
                         try
                         {
-                            var handlerTask =
-                                (Task)handler.DynamicInvoke(new[] { rawEvent.Body }.Concat(resolvableParameters).ToArray());
-                            handlerTask.GetAwaiter().GetResult();
-
-                            if(rawEvent.Headers.TryGetValue(OperationContext.Keys.UserIdKey, out var userId))
+                            if (rawEvent.Headers.TryGetValue(OperationContext.Keys.UserIdKey, out var userId))
                             {
                                 OperationContext.UserId = Guid.Parse(userId.ToString());
                             }
@@ -78,6 +74,9 @@ namespace domainD.EventSubscription.NEventStore
                             {
                                 OperationContext.CorrelationId = Guid.Parse(correlationId.ToString());
                             }
+                            var handlerTask =
+                                (Task)handler.DynamicInvoke(new[] { rawEvent.Body }.Concat(resolvableParameters).ToArray());
+                            handlerTask.GetAwaiter().GetResult();
                         }
                         catch (Exception ex)
                         {
