@@ -49,7 +49,7 @@ namespace domainD.Repository.NEventStore
                             {
                                 { KnownHeaders.EventClrType, @event.GetType().AssemblyQualifiedName },
                                 { KnownHeaders.AggregateRootClrType, typeof(TAggregateRoot).AssemblyQualifiedName },
-                                { KnownHeaders.CorrelationId, commitId }
+                                { KnownHeaders.CorrelationId, OperationContext.CorrelationId }
                             }
                         });
                     }
