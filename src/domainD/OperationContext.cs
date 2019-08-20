@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 
 namespace domainD
@@ -13,6 +15,13 @@ namespace domainD
             public const string CommandIdKey = nameof(CommandId);
 
             public const string UserIdKey = nameof(UserId);
+
+            public static IEnumerable<string> KnownKeys()
+            {
+                yield return CorrelationIdKey;
+                yield return CommandIdKey;
+                yield return UserIdKey;
+            }
         }
 
         private static readonly AsyncLocal<ConcurrentDictionary<string, object>> ContextMap = new AsyncLocal<ConcurrentDictionary<string, object>>();
@@ -36,6 +45,12 @@ namespace domainD
         {
             ContextMap.Value = ContextMap.Value ?? new ConcurrentDictionary<string, object>();
             return ContextMap.Value.TryAdd(key, value);
+        }
+
+        public static IEnumerable<KeyValuePair<string, object>> CustomParameters()
+        {
+            ContextMap.Value = ContextMap.Value ?? new ConcurrentDictionary<string, object>();
+            return ContextMap.Value.Where(v => !Keys.KnownKeys().Contains(v.Key));
         }
 
 

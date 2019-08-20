@@ -37,21 +37,28 @@ namespace domainD.Repository.NEventStore
 
                     foreach (var @event in uncommittedEvents)
                     {
+                        var headers = new Dictionary<string, object>
+                        {
+                            { KnownHeaders.EventClrType, @event.GetType().AssemblyQualifiedName },
+                            { KnownHeaders.AggregateRootClrType, typeof(TAggregateRoot).AssemblyQualifiedName }
+                        };
+
+                        if(OperationContext.CorrelationId.HasValue)
+                        {
+                            headers.Add(KnownHeaders.CorrelationId, OperationContext.CorrelationId);
+                        }
+
                         if (OperationContext.UserId.HasValue)
                         {
                             @event.CreatedBy = OperationContext.UserId.Value;
+                            headers.Add(KnownHeaders.UserId, OperationContext.UserId);
                         }
 
                         stream.Add(new EventMessage
                         {
                             Body = @event,
-                            Headers = new Dictionary<string, object>
-                            {
-                                { KnownHeaders.EventClrType, @event.GetType().AssemblyQualifiedName },
-                                { KnownHeaders.AggregateRootClrType, typeof(TAggregateRoot).AssemblyQualifiedName },
-                                { KnownHeaders.CorrelationId, OperationContext.CorrelationId }
-                            }
-                        });
+                            Headers = headers.Union(OperationContext.CustomParameters()).ToDictionary(k => k.Key, v => v.Value)
+                        }); ;
                     }
 
                     try

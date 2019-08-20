@@ -8,8 +8,9 @@ namespace domainD.Repository.NEventStore
 {
     public static class KnownHeaders
     {
-        public const string EventClrType = "eventType";
-        public const string AggregateRootClrType = "aggregateRootType";
-        public const string CorrelationId = "correlationId";
+        public const string EventClrType = nameof(EventClrType);
+        public const string AggregateRootClrType = nameof(AggregateRootClrType);
+        public const string CorrelationId = nameof(CorrelationId);
+        public const string UserId = nameof(UserId);
     }
 }

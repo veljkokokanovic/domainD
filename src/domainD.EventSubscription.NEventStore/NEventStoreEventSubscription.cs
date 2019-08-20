@@ -51,11 +51,10 @@ namespace domainD.EventSubscription.NEventStore
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var events = commit.Events.Select(e => e.Body).Cast<DomainEvent>();
                 var builder = _serviceProvider.GetRequiredService<IHandlerResolver>();
-                foreach (var evt in events)
+                foreach (var rawEvent in commit.Events)
                 {
-                    if (builder.TryGetEventHandler(evt, out var handler))
+                    if (builder.TryGetEventHandler((DomainEvent)rawEvent.Body, out var handler))
                     {
                         var resolvableParameters = handler.Method
                             .Parameters()
@@ -67,18 +66,28 @@ namespace domainD.EventSubscription.NEventStore
                         try
                         {
                             var handlerTask =
-                                (Task)handler.DynamicInvoke(new[] { evt }.Concat(resolvableParameters).ToArray());
+                                (Task)handler.DynamicInvoke(new[] { rawEvent.Body }.Concat(resolvableParameters).ToArray());
                             handlerTask.GetAwaiter().GetResult();
+
+                            if(rawEvent.Headers.TryGetValue(OperationContext.Keys.UserIdKey, out var userId))
+                            {
+                                OperationContext.UserId = Guid.Parse(userId.ToString());
+                            }
+
+                            if (rawEvent.Headers.TryGetValue(OperationContext.Keys.CorrelationIdKey, out var correlationId))
+                            {
+                                OperationContext.CorrelationId = Guid.Parse(correlationId.ToString());
+                            }
                         }
                         catch (Exception ex)
                         {
-                            return ErrorHandler(evt, ex);
+                            return ErrorHandler((DomainEvent)rawEvent.Body, ex);
                         }
                     }
                     else
                     {
                         _logger.LogWarning("Subscription event handler for {EventType} was not registered",
-                            evt.GetType().Name);
+                            rawEvent.Body.GetType().Name);
                     }
                 }
 
