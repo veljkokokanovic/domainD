@@ -2,7 +2,7 @@
 using System.Collections.Concurrent;
 using System.Threading;
 
-namespace domainD.Repository
+namespace domainD
 {
     public static class OperationContext
     {
